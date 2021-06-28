@@ -48,7 +48,7 @@ brainage_figure(1) = figure(); hold on;
 for i = 1:3
 subplot(1,3,i); hold on;
     plot(primary.age, primary.data(:,i+4), '.','Color',[210/255, 210/255, 210/255],'Markersize',2,'LineWidth',0.25)
-    plot(secondary.age, secondary.data(:,i+4), '.','Color',[0, 0.4470, 0.7410],'Markersize',1,'LineWidth',0.25)
+    plot(secondary.age, secondary.data(:,i+4), '.','Color',[0, 0.4470, 0.7410],'Markersize',2,'LineWidth',0.25)
 
     set(0,'DefaultTextFontname', 'CMU Serif');
     set(0,'defaulttextinterpreter','latex');
@@ -70,10 +70,15 @@ subplot(1,3,i); hold on;
     yticks(45:10:85);
     yticklabels(45:10:85);
 
+    % axis label position
     xh = get(gca,'xlabel');
     get(xh,'position');
     set(xh,'position', [63.5 37.5 -1]); 
     
+    % prevent x axis cut off
+    pos = get(gca, 'Position');
+    set(gca, 'Position', [pos(1) pos(2)+0.05 pos(3) pos(4)-0.05]);
+
     text(66,48,txt{i},'Fontsize', 7, 'HorizontalAlignment', 'left');
     text(45,78,txt2{i},'Fontsize', 7, 'HorizontalAlignment', 'left', 'Color', [0, 0.4470, 0.7410]);
     title(ttl{i}, 'Fontsize', 8);
@@ -81,5 +86,6 @@ subplot(1,3,i); hold on;
 end
 
 set(brainage_figure(1),'PaperUnits', 'centimeters');
-set(brainage_figure(1),'PaperPosition', [0.75 18 20 6]);
+set(brainage_figure(1),'PaperPosition', [0.5 20 20 6.5]);
 print('code/figures/accuracy_matched.pdf','-dpdf')
+print('code/figures/accuracy_matched.png','-dpng', '-r300')

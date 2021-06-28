@@ -1,10 +1,9 @@
 % ==================================================
 % === Plot brain-predicted vs. chronological age ===
 % ==================================================
-% /opt/matlab/bin/matlab -nodesktop -nodisplay 
 
 % set working directory
-cd /slow/projects/base2/
+cd /Users/philippe/Desktop/base2
 
 % load ukb and base2 data
 primary = load('data/ukb_brainage.mat');
@@ -90,7 +89,6 @@ end
 set(brainage_figure(i),'PaperUnits', 'centimeters');
 set(brainage_figure(i),'PaperPosition', [0.25 7 20 20]);
 print(strcat('code/figures/accuracy_', tissue{i}, '.pdf'),'-dpdf')
-
 end
     
 % plot brain-predicted vs. chronological age (stacked models)
@@ -124,16 +122,22 @@ subplot(1,3,i); hold on;
     yticks(45:10:85);
     yticklabels(45:10:85);
 
+    % axis label position
     xh = get(gca,'xlabel');
     get(xh,'position');
     set(xh,'position', [63.5 37.5 -1]); 
     
+    % prevent x axis cut off
+    pos = get(gca, 'Position');
+    set(gca, 'Position', [pos(1) pos(2)+0.05 pos(3) pos(4)-0.05]);
+
     text(66,48,txt{i,j},'Fontsize', 7, 'HorizontalAlignment', 'left');
     text(45,78,txt2{i,j},'Fontsize', 7, 'HorizontalAlignment', 'left', 'Color', [0, 0.4470, 0.7410]);
     title(ttl{i,j}, 'Fontsize', 8);
-    
+
 end
 
 set(brainage_figure(1),'PaperUnits', 'centimeters');
-set(brainage_figure(1),'PaperPosition', [0.75 18 20 6]);
+set(brainage_figure(1),'PaperPosition', [0.5 20 20 6.5]);
 print('code/figures/accuracy.pdf','-dpdf')
+print('code/figures/accuracy.png','-dpng', '-r300')
