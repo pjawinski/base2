@@ -7,8 +7,20 @@ Aging is a ubiquitous risk factor for disease and mortality. From a biological p
 
 Keywords: aging, brain age, cognition, mental health, Berlin Aging Study II (BASE-II)
 
+## Folder structure
+[code](code) - contains all analysis scripts as well as the extracted [tables](code/tables), [figures](code/figures) and required Matlab [functions](code/functions)<br>
+[renv](renv) - contains a single file to initiate the R environment (the scripts located in [code](code) refer to this file)<br>
+[renv.lock](renv.lock) - a list of R packages automatically downloaded and attached to the R environment of this project<br>
 
-## Interactive and Static Figures
+## How to download the code
+In order to inspect the code on your local device, you may clone this repository via the the following commands:
+```
+git clone https://github.com/pjawinski/base2.git
+cd base2
+```
+You are now ready to inspect the code and extraced files on your local drive. Running the code currently requires the original dataset. The data presented in our manuscript is available upon request from the [BASE-II office](https://www.base2.mpg.de). The data are not publicly available due to them containing information that could compromise research participant privacy/consent.
+
+## Figures
 [Fig. 1](https://pjawinski.github.io/base2/code/figures/accuracy.png) - Brain-predicted (‘brain age’) vs. chronological age stratified by sample and tissue class (static)<br>
 [Fig. 2](https://pjawinski.github.io/base2/code/figures/main_corr.html) - Partial Pearson correlations between brain age gap and 27 outcome variables (interactive)<br>
 [Fig. 3](https://pjawinski.github.io/base2/code/figures/qqplot.pdf) - Permutation-based qq-plots showing the distribution of observed vs. expected p-values stratified by tissue type (static)<br>
