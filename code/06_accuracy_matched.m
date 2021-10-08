@@ -3,10 +3,10 @@
 % ===============================================================================
 
 % set working directory
-cd /Users/philippe/Desktop/base2
+cd '/Users/philippe/Desktop/base2'
 
 % import data
-data = importdata('data/04_matched_datasets.txt');
+data = importdata('code/derivatives/04_matched_datasets.txt');
 data.varnames = data.textdata(1,2:10);
 data.IID = data.textdata(2:end,1);
 data = rmfield(data,'textdata');

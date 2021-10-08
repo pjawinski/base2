@@ -11,7 +11,7 @@ addpath code/functions
 
 % load data
 clear all
-master = importdata('data/03_brainage_w_phenotypes.txt');
+master = importdata('code/derivatives/03_brainage_w_phenotypes.txt');
 master.varnames = master.textdata(1,2:size(master.textdata,2))';
 master.IID = master.textdata(2:size(master.textdata,1),1);
 master = rmfield(master,'textdata')
@@ -193,7 +193,7 @@ mean(abs(p_obs_partial' - p_obs_res')) % mean difference in p = 0.00016
 max(abs(rho_obs_partial' - rho_obs_res')) % maximum difference in rho = 0.008
 max(abs(p_obs_partial' - p_obs_res')) % maximum difference in p = 0.0016
 
-%% Calculate permutation-based p-value for effect directions
+%% Carry out permutations
 
 % create vector for permutation
 npermutations = 1000000;
@@ -233,25 +233,40 @@ parfor i = 1:npermutations
 end
 toc 
 
-% get permutation-based p-values for the observed number of hypothesis-consistent
-% effect directions. - 0.1025, 0.0065, 0.0067
-% - 0.002 overall
-sum(hits_exp' >= hits_obs)/npermutations
-sum(sum(hits_exp,1)' >= sum(hits_obs))/(npermutations*3)
-sum(hits_obs) % count of associations with hypothesis-consistent effect directions
-sum(hits_obs)/size(rho_obs_partial(:),1) % percentage of associations with hypothesis-consistent effect directions
-
-% get permutation-based p-values for the observed number of nominally
-% significant results - 0.3469, 0.0010, 0.0027
-% - 0.0013 overall
-sum(reshape(sum(p_exp < 0.05,2),[size(p_exp,1), size(p_exp,3)])' >= sum(p_obs_partial < 0.05,2)')/npermutations
-sum(sum(reshape(p_exp < 0.05,[size(p_exp,1)*size(p_exp,2), size(p_exp,3)]) > 0.05)' >= sum(p_obs_partial(:) < 0.05)')/(npermutations*3)
-sum(p_obs_partial(:) < 0.05) % count of nominally significant results
-sum(p_obs_partial(:) < 0.05)/size(p_obs_partial(:),1) % percentage of nominally significant results
+% shut down parcluster
+p = gcp;
+delete(p);
+myCluster = parcluster('local');
+delete(myCluster.Jobs)
 
 % get observed p values
 rho_obs = rho_obs_partial;
 p_obs = p_obs_partial;
+
+% save variables and empirical p values
+save('code/derivatives/11_permutations.mat', '-v7.3', 'hits_exp', 'hits_obs', 'npermutations', 'p_exp', 'p_obs', 'rho_exp', 'rho_obs');
+          
+%% Get some permutation-based statistics
+
+% load data
+load('code/derivatives/11_permutations.mat')
+
+% get permutation-based p-values for the observed number of hypothesis-consistent
+% effect directions. - 0.1018, 0.0064, 0.0065
+% - 0.0022 overall
+format long
+sum(hits_exp' >= hits_obs)/npermutations
+sum(sum(hits_exp,1)' >= sum(hits_obs))/(npermutations*3)
+sum(hits_obs) % count of associations with hypothesis-consistent effect directions
+sum(hits_obs)/size(rho_obs(:),1) % percentage of associations with hypothesis-consistent effect directions
+
+% get permutation-based p-values for the observed number of nominally
+% significant results - 0.3469, 0.0010, 0.0027
+% - 0.0013 overall
+sum(reshape(sum(p_exp < 0.05,2),[size(p_exp,1), size(p_exp,3)])' >= sum(p_obs < 0.05,2)')/npermutations
+sum(sum(reshape(p_exp < 0.05,[size(p_exp,1)*size(p_exp,2), size(p_exp,3)]) > 0.05)' >= sum(p_obs(:) < 0.05)')/(npermutations*3)
+sum(p_obs(:) < 0.05) % count of nominally significant results
+sum(p_obs(:) < 0.05)/size(p_obs(:),1) % percentage of nominally significant results
 
 % calculate mean observed and expected rho
 rho_obs_atanh = atanh(rho_obs);
@@ -266,19 +281,18 @@ rho_exp_mean_all = tanh(mean(rho_exp_atanh_all,1));
 rho_exp_mean_all = rho_exp_mean_all(:);
 
 % return mean observed rho and respective permutation-based p-values
-% 0.0325 (0.0426), 0.0671 (2E-4), 0.0609 (6E-4)
-% all: 0.0535 (9E-4)
+% 0.0321 (0.0440), 0.0664 (2E-4), 0.0602 (6E-4)
+% all: 0.0529 (0.001)
 rho_obs_mean
 sum(rho_exp_mean>=rho_obs_mean,2)/npermutations % 1 - (sum(rho_exp_mean>rho_obs_mean,2)/npermutations)
-
 rho_obs_mean_all
 sum(rho_exp_mean_all>=rho_obs_mean_all)/npermutations % 1 - (sum(rho_exp_mean_all>rho_obs_mean_all)/npermutations)
 
 % calculate inflation factor 'lambda', i.e. the ratio of the observed median
 % chi2-value vs. the expected median chi2-value (chi2inv(0.5,1) = 0.4549)
 % Lambda = 2.9352, 5.1468, 4.1591; 3.5179
-lambdas = median(chi2inv(1-p_obs_partial',1))/chi2inv(0.5,1)
-lambda_all = median(chi2inv(1-p_obs_partial(:)',1))/chi2inv(0.5,1)
+lambdas = median(chi2inv(1-p_obs',1))/chi2inv(0.5,1)
+lambda_all = median(chi2inv(1-p_obs(:)',1))/chi2inv(0.5,1)
 
     % calculate lambdas from permutations
     p_exp_chi2 = chi2inv(1-p_exp,1);
@@ -293,150 +307,14 @@ lambda_all = median(chi2inv(1-p_obs_partial(:)',1))/chi2inv(0.5,1)
     
     % Compute the p-values of the observed lambdas as the proportion of
     % permutation-lambdas that exceed the observed lambdas
-    % p = 0.0283, 7E-4, 0.0038; 0.0048
-    sum(p_exp_chi2_gm_lambdas >= lambdas(1))/npermutations
-    sum(p_exp_chi2_wm_lambdas >= lambdas(2))/npermutations
-    sum(p_exp_chi2_gwm_lambdas >= lambdas(3))/npermutations
-    sum(p_exp_chi2_lambda_all >= lambda_all)/npermutations
+    % p = 0.0280, 7E-4, 0.0037; 0.0047
+    [sum(p_exp_chi2_gm_lambdas >= lambdas(1))/npermutations,...
+    sum(p_exp_chi2_wm_lambdas >= lambdas(2))/npermutations,...
+    sum(p_exp_chi2_gwm_lambdas >= lambdas(3))/npermutations,...
+    sum(p_exp_chi2_lambda_all >= lambda_all)/npermutations]
    
 % how many associations reached p < 0.001 by chance (0.001 = threshold of 
 % significance for individual tests after multiple-testing correction)
 % - 4.9%
 p_exp_all = reshape(p_exp, [size(p_exp,1)*size(p_exp,2) size(p_exp,3)]);
 sum(sum(p_exp_all <= 0.001) >= 1)/npermutations
-
-%% Draw one-sided qq-plots for each brainAGE variable
-
-% draw qq plot
-ttl{1} = 'Grey matter';
-ttl{2} = 'White matter';
-ttl{3} = 'Grey and white matter';
-
-qqplot = figure(); hold on;
-for j = 1:3
-    
-    % initiate new subplot
-    subplot(1,3,j); hold on;
-    set(0,'DefaultTextFontname', 'CMU Serif');
-    set(0,'defaulttextinterpreter','latex')
-    set(gca,'TickLabelInterpreter', 'latex');
-
-    % sort p-values derived from each permutation and convert to Z-values
-    RND_Vector_p = reshape(sort(p_exp(j,:,:), 'descend'),[size(p_exp,2) size(p_exp,3)]);
-    RND_Vector_Z = atanh(RND_Vector_p); % return p values again by: RND_Vector_Z_p = 2*normcdf(RND_Vector_Z);
-
-    % get mean expected p-values and confidence intervals from permutation-based
-    % p-values at rank 1:ntests
-    Mean = zeros(size(RND_Vector_Z,1),1);
-    Konf95 = zeros(size(RND_Vector_p,1),1);
-    Konf05 = zeros(size(RND_Vector_p,1),1);
-
-    for i=1:size(RND_Vector_p,1)
-        Mean(i,1) = -log10(tanh(mean(RND_Vector_Z(i,:))));    
-        Konf95(i,1) = -log10(min(maxk(RND_Vector_p(i,:),size(RND_Vector_p,2)/20)));
-        Konf05(i,1) = -log10(max(mink(RND_Vector_p(i,:),size(RND_Vector_p,2)/20)));
-    end
-
-    % plot title
-    title(ttl{j},'fontsize',10,'Interpreter','latex');
-
-    % draw confidence interval
-    x = Mean;
-    x2 = [x;flipud(x)];
-    inBetween = [Konf05;flipud(Konf95)];
-    a = fill(x2, inBetween, [211,211,211]/255);
-    set(a,'EdgeColor','none','facealpha',0.5);
-    
-    % plot observed p-values against expected p-values (log-scale)
-    plot(Mean,-log10(sort(p_obs(j,:),'descend')),'o','Color',[0, 0.4470, 0.7410],'Markersize',2,'LineWidth',0.25)
-
-    % plot diagonal line of expected p-values
-    plot(Mean,Mean,'k-');
-
-    % set plot styles
-    ax = gca;
-    ax.XAxis.FontSize = 8;
-    ax.YAxis.FontSize = 8;
-    ax.TickLabelInterpreter='latex';
-
-    ylim([0 4]); xlim([0 2]);
-    xlabel(sprintf('expected p-value ($-log_{10}$ scale)'),'fontsize',10,'Interpreter','latex');
-    ylabel(sprintf('observed p-value ($-log_{10}$ scale)'),'fontsize',10,'Interpreter','latex');
-
-    xticks(0:1:3);
-    xticklabels(0:1:2);
-    ytickformat('%.0f');
-    yticks(0:1:4);
-    yticklabels(0:1:4);
-end
-
-% finish plot
-qqplot.Renderer = 'Painter';
-set(qqplot,'PaperUnits', 'centimeters');
-set(qqplot,'PaperPosition', [0 19 20 8]);
-print('code/figures/qqplot.pdf','-dpdf');
-
-%% Draw qq-plot for all tested associations (3 brainAGE x 27 outcome variables)
-
-% sort p-values derived from each permutation and convert to Z-values
-RND_Vector_p = sort(reshape(p_exp,[size(p_exp,1)*size(p_exp,2), size(p_exp,3)]), 'descend');
-RND_Vector_Z = atanh(RND_Vector_p);
-
-% get mean expected p-values and confidence intervals from permutation-based
-% p-values at rank 1:ntests
-Mean = zeros(size(RND_Vector_p,1),1);
-Konf95 = zeros(size(RND_Vector_p,1),1);
-Konf05 = zeros(size(RND_Vector_p,1),1);
-
-for i=1:size(RND_Vector_p,1)
-    Mean(i,1) = -log10(tanh(mean(RND_Vector_Z(i,:))));    
-    Konf95(i,1) = -log10(min(maxk(RND_Vector_p(i,:),size(RND_Vector_p,2)/20)));
-    Konf05(i,1) = -log10(max(mink(RND_Vector_p(i,:),size(RND_Vector_p,2)/20)));
-end
-
-% initiate new plot
-qqplot = figure(); hold on;
-set(0,'DefaultTextFontname', 'CMU Serif');
-set(0,'defaulttextinterpreter','latex')
-set(gca,'TickLabelInterpreter', 'latex');
-
-    % draw confidence interval
-    x = Mean;
-    x2 = [x;flipud(x)];
-    inBetween = [Konf05;flipud(Konf95)];
-    a = fill(x2, inBetween, [211,211,211]/255);
-    set(a,'EdgeColor','none','facealpha',0.5);
-
-    % plot observed p-values against expected p-values (log-scale)
-    plot(Mean,-log10(sort(p_obs(:),'descend')),'o','Color',[0, 0.4470, 0.7410],'Markersize',2,'LineWidth',0.25)
-
-    % plot diagonal line of expected p-values
-    plot(Mean,Mean,'k-');
-
-    % set plot styles
-    ax = gca;
-    ax.XAxis.FontSize = 8;
-    ax.YAxis.FontSize = 8;
-    ax.TickLabelInterpreter='latex';
-
-    ylim([0 4]); xlim([0 2]);
-    xlabel(sprintf('expected p-value ($-log_{10}$ scale)'),'fontsize',10,'Interpreter','latex');
-    ylabel(sprintf('observed p-value ($-log_{10}$ scale)'),'fontsize',10,'Interpreter','latex');
-
-    xticks(0:1:3);
-    xticklabels(0:1:2);
-    ytickformat('%.0f');
-    yticks(0:1:4);
-    yticklabels(0:1:4);
-
-% finish plot
-qqplot.Renderer = 'Painter';
-set(qqplot,'PaperUnits', 'centimeters');
-set(qqplot,'PaperPosition', [2 18 5 8]);
-print('code/figures/qqplot_all.pdf','-dpdf');
-
-%% delete parcluster
-p = gcp;
-delete(p);
-myCluster = parcluster('local');
-delete(myCluster.Jobs)

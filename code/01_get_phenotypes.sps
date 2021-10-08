@@ -5,7 +5,7 @@
 * =====================.
 
 * Set working directory.
-cd '/Users/philippe/Desktop/base2/'.
+cd '/users/philippe/desktop/projects/base2/'.
 
 * Get MASTER data.
 GET FILE='data/BASE_II_for_Markett_jd.sav'.
@@ -187,6 +187,21 @@ IF  (CESD_missing < 3) CESD_Summe = MEAN(CESD_01u,CESD_02u,CESD_03u,CESD_04u,CES
  CESD_11u,CESD_12u,CESD_13u,CESD_14u,CESD_15u,CESD_16u,CESD_17u,CESD_18u,CESD_19u,CESD_20u)*20.
 EXECUTE.
 
+* Calculate futi_mean.
+COUNT futi_missing=futi_1 futi_2 futi_3 futi_4 futi_5 futi_6 futi_7 futi_8 futi_9 futi_10 (SYSMIS,MISSING,999,998).
+EXECUTE.
+
+RECODE futi_1 futi_2 futi_3 futi_4 futi_5 futi_6 futi_7 (1=1) (2=2) (3=3) (4=4) (5=5) (MISSING=SYSMIS) (999=SYSMIS) (998=SYSMIS) 
+    INTO futi_1u futi_2u futi_3u futi_4u futi_5u futi_6u futi_7u.
+EXECUTE.
+
+RECODE futi_8 futi_9 futi_10 (1=5) (2=4) (3=3) (4=2) (5=1) (MISSING=SYSMIS) (999=SYSMIS) (998=SYSMIS) 
+    INTO futi_8u futi_9u futi_10u.
+EXECUTE.
+
+IF  (futi_missing < 2) futi_mean = MEAN(futi_1u,futi_2u,futi_3u,futi_4u,futi_5u,futi_6u,futi_7u,futi_8u,futi_9u,futi_10u ).
+EXECUTE.
+
 * rename uric acid.
 RENAME VARIABLE (HarnsäuremgdL = HarnsaeuremgdL ).
 EXECUTE.
@@ -200,12 +215,12 @@ SELECT IF (NOT(SYSMIS(age_T1_LIP_MRT))).
 EXECUTE.
 
 ** Save dataset with variables of interest in .sav format.
-SAVE OUTFILE='data/01_phenotypes_master.sav'
+SAVE OUTFILE='code/derivatives/01_phenotypes_master.sav'
    /KEEP=ID sex age_T1_LIP_MRT Educ_final hnetto MMSE_Summe GDS_Summe CESD_Summe Rauchen_aktuell_inverted
 Alkohol_haufigkeit Alkohol_Menge Alkohol_6Glaser BMI RRdi RRsy finalMetLscore CH_Diabetes HOMAIR HbA1c BZP1 BZP2 GammaGTGGTUL HarnsaeuremgdL TNF1 DS2_corr EM_final WM_final Gf_final futi_mean cfc_mean.
 
 ** Save dataset for analyses in Matlab and R in tab-delimited .txt format.
-GET FILE='data/01_phenotypes_master.sav'.
+GET FILE='code/derivatives/01_phenotypes_master.sav'.
 DATASET NAME phenotypes.
 DATASET ACTIVATE phenotypes.
 DATASET CLOSE MASTER.
@@ -221,7 +236,7 @@ FREQUENCIES VARIABLES=sex age_T1_LIP_MRT Educ_final hnetto MMSE_Summe GDS_Summe 
   /STATISTICS=STDDEV MINIMUM MAXIMUM MEAN MEDIAN SKEWNESS SESKEW KURTOSIS SEKURT
   /ORDER=ANALYSIS.
 
-SAVE TRANSLATE OUT = 'data/01_phenotypes_master.txt'
+SAVE TRANSLATE OUT = 'code/derivatives/01_phenotypes_master.txt'
    / TYPE=TAB
    / FIELDNAMES
    / REPLACE

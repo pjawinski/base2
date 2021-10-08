@@ -3,11 +3,11 @@
 % ==================================================
 
 % set working directory
-cd /Users/philippe/Desktop/base2
+cd '/users/philippe/desktop/base2'
 
 % load ukb and base2 data
 primary = load('data/ukb_brainage.mat');
-secondary = load('data/03_brainage.mat');
+secondary = load('code/derivatives/03_brainage.mat');
 
 % calculate correlations and mean absolute errors
 primary.age = primary.covs.data(:,5);

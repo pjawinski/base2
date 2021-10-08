@@ -4,7 +4,7 @@
 % /opt/matlab/bin/matlab -nodesktop -nodisplay 
 
 % set working directory
-cd /slow/projects/base2/data/T1w
+cd '/slow/projects/base2/'
 
 % set mail account to submit error messages 
 E_mail = 'account@host.de';
@@ -24,10 +24,28 @@ setpref('Internet','SMTP_Password',SMTP_Password);
 addpath /slow/projects/base2/code/functions/
 addpath /fast/software/matlab/spm12/
 
+% set temporary folder
 path = strcat(pwd,'/');
 temppath = strcat(path,'temp/');
 system(char(strcat({'mkdir -p '}, temppath)));
-subjects = importdata(strcat(path,'subs_to_preprocess.txt'));
+
+% get files that require cat12 preprocessing
+scans = dir('data/T1w/**/*.nii')
+clearvars scans2remove
+k = 0
+for i = 1:size(scans,1)
+    if exist(strcat(scans(i).folder,'/',scans(i).name(1:(end-4)),'_cat12.zip')) == 2
+        k = k + 1;
+        scans2remove(k,1) = i;
+    end
+end
+if exist('scans2remove', 'var') == 1
+    scans(scans2remove) = []
+end
+
+% get subs and folder
+subs = extractBefore({scans.name}', '.');
+subs_folder = {scans.folder}';
 
 % set up Matlab job (cat12.5 build 1364)
 matlabbatch{1}.spm.tools.cat.estwrite.nproc = 0;
@@ -60,9 +78,6 @@ matlabbatch{2}.spm.spatial.smooth.dtype = 0;
 matlabbatch{2}.spm.spatial.smooth.im = 0;
 matlabbatch{2}.spm.spatial.smooth.prefix = 's';
 
-% set maximum number of compute threads
-maxNumCompThreads(1)
-
 % start parallel pool
 myCluster = parcluster('local');
 myCluster.NumWorkers = 100;
@@ -71,59 +86,51 @@ parpool('local',100);
 
 % submit constant variables to workers
 matlabbatch_constant = parallel.pool.Constant(matlabbatch);
-subjects_constant = parallel.pool.Constant(subjects);
-dir_constant = parallel.pool.Constant(path);
-tempdir_constant = parallel.pool.Constant(temppath);
+subs_constant = parallel.pool.Constant(subs);
+subs_folder_constant = parallel.pool.Constant(subs_folder);
+temppath_constant = parallel.pool.Constant(temppath);
 
 % initiate spm
 spm('Defaults','fMRI');
 spm_jobman('initcfg');
 
-% loop
-parfor idx = 1:size(subjects,1)
+parfor idx = 1:numel(subs)
     
-    dir = dir_constant.Value; % dir = path;
-    tempdir = tempdir_constant.Value; % tempdir = temppath;
-    element = char(string(subjects_constant.Value(idx))); % element = char(string(subjects(idx)));
+    % get vars
+    temp = temppath_constant.Value; % temp = temppath;
+    sub = string(subs_constant.Value(idx)); % sub = string(subs(idx));
+    sub_folder = string(subs_folder_constant.Value(idx)); % sub_folder = subs_folder(idx);
     matlabbatch_loop = matlabbatch_constant.Value; % matlabbatch_loop = matlabbatch;
- 
-    folder = element(4:10);
-    
+
     try
-        system(strcat({'cp -R '}, dir, string(folder), {' '}, tempdir));
+        % copy file to temporary folder and gunzip .nii.gz for spm
+        system(strcat({'mkdir -p '}, temp, sub, {'; cp -R '}, sub_folder, {'/. '}, temp, sub));
+        % system(strcat({'gunzip -fk '}, temp, sub, '/', sub, '.nii.gz'));    
 
-        if exist(strcat(tempdir, string(folder), '/', string(element)),'file') == 2
-            system(strcat({'mkdir '}, tempdir, string(folder), '/cat12'));
-            system(strcat({'mv '}, tempdir, string(folder), '/', string(element), {' '}, tempdir, string(folder), '/cat12/'));
+        if exist(strcat(temp, sub, '/', sub, '.nii'), 'file') == 2
+            system(strcat({'mkdir -p '}, temp, sub, '/cat12'));
+            system(strcat({'mv '}, temp, sub, '/', sub, {'.nii '}, temp, sub, '/cat12'));
 
-            matlabbatch_loop{1}.spm.tools.cat.estwrite.data = {char(strcat(tempdir, string(folder), '/cat12/', string(element)))};
-            matlabbatch_loop{2}.spm.spatial.smooth.data = {char(strcat(tempdir, string(folder),'/cat12/mri/mwp1', string(element)))
-                                                           char(strcat(tempdir, string(folder),'/cat12/mri/mwp2', string(element)))
-                                                           char(strcat(tempdir, string(folder),'/cat12/mri/wm', string(element)))};
-            
-            cd(strcat(strcat(tempdir, string(folder), '/cat12/')))
+            matlabbatch_loop{1}.spm.tools.cat.estwrite.data = {char(strcat(temp, sub, '/cat12/', sub, '.nii'))};
+            matlabbatch_loop{2}.spm.spatial.smooth.data =  {char(strcat(temp, sub, '/cat12/mri/mwp1', sub, '.nii'))
+                                                        char(strcat(temp, sub, '/cat12/mri/mwp2', sub, '.nii'))
+                                                        char(strcat(temp, sub, '/cat12/mri/wm', sub, '.nii'))};
             spm_jobman('run',matlabbatch_loop);
 
-            resize_img(char(strcat(tempdir, string(folder),'/cat12/mri/smwp1', string(element))), [8 8 8],nan(2,3))
-            resize_img(char(strcat(tempdir, string(folder),'/cat12/mri/smwp2', string(element))), [8 8 8],nan(2,3))
-            resize_img(char(strcat(tempdir, string(folder),'/cat12/mri/swm', string(element))), [8 8 8],nan(2,3))
+            resize_img(char(strcat(temp, sub,'/cat12/mri/smwp1', sub, '.nii')), [8 8 8], nan(2,3))
+            resize_img(char(strcat(temp, sub,'/cat12/mri/smwp2', sub, '.nii')), [8 8 8], nan(2,3))
+            resize_img(char(strcat(temp, sub,'/cat12/mri/swm', sub, '.nii')), [8 8 8], nan(2,3))
 
-            system(strcat({'rm '}, tempdir, string(folder), '/cat12/', string(element)));
-            system(strcat({'cd '}, tempdir, string(folder), {'/; zip -r '}, string(folder), '_cat12.zip cat12/ -x "*.DS_Store"'));
-
-            system(strcat({'cp '}, tempdir, string(folder), '/', string(folder), {'_cat12.zip '}, dir, string(folder), '/'));
-        else
-            sendmail(E_mail_target,'Message from Cluster', string(strcat(string(folder),{': '}, string(element), {' does not exist'})));
+            system(strcat({'rm '}, temp, sub, '/cat12/', sub, '.nii'));
+            system(strcat({'cd '}, temp, sub, {'/; zip -r '}, sub, '_cat12.zip cat12/ -x "*.DS_Store"'));
+            system(strcat({'cp '}, temp, sub, '/', sub, {'_cat12.zip '}, sub_folder, '/'));
         end
-
-        system(strcat({'rm -R '}, tempdir, string(folder)));
-        system(strcat('sed -i -e "s%', string(element), '%%g"', {' '}, strcat(dir,'subs_to_preprocess.txt'))); % remove subj from to do list
-        system(string(strcat('sed -i -e "/^[[:space:]]*$/d"', {' '}, strcat(dir,'subs_to_preprocess.txt')))); % remove nasty white space
+        system(strcat({'rm -R '}, temp, sub));    
         
     catch ME
-    sendmail(E_mail_target,'Message from Cluster', string(strcat(string(folder),{': '}, ME.message))); 
-    end 
-end
+    sendmail(E_mail_target,'Message from Cluster', string(strcat(sub,{': '}, ME.message))); 
+    end
+end 
 
 sendmail(E_mail_target,'Message from Cluster','Loop finished.');
 

@@ -3,10 +3,17 @@
 # ============================================================
 
 # set working directory
-setwd('/Users/philippe/Desktop/base2')
+setwd('/users/philippe/desktop/projects/base2')
+
+# detach 'other packages' if there are any
+if (!is.null(names(sessionInfo()$otherPkgs))) {
+  invisible(lapply(paste('package:',names(sessionInfo()$otherPkgs),sep=""),detach,character.only=TRUE,unload=TRUE))
+}
 
 # activate R environment
-source("renv/activate.R")
+if (exists('.rs.restartR', mode = 'function')) { .rs.restartR() }
+source('renv/activate.R')
+renv::activate(getwd())
 renv::restore(prompt = FALSE)
 
 # attach packages to current R session
@@ -19,7 +26,7 @@ library(reshape2)
 library(scales)
 
 # load data
-df = read.delim('data/03_brainage_w_phenotypes.txt', sep = '\t', header = TRUE)
+df = read.delim('code/derivatives/03_brainage_w_phenotypes.txt', sep = '\t', header = TRUE)
 
 # bias-correction of brain age gap variables
 df$gmres = resid(lm(brainage_gap_gm_stack ~ sex + age + age2 + TIV, data = df))
@@ -49,8 +56,8 @@ varint = as.data.frame(matrix(c(
   'RRdi', 'Diastolic blood pressure',
   'RRsy', 'Systolic blood pressure',
   'finalMetLscore', 'Metabolic load factor',
-  'GammaGTGGTUL', 'Gamma-glutamyltransferase',
-  'HarnsaeuremgdL', 'Urea',
+  'GammaGTGGTUL', 'Gamma-glutamyl-transferase',
+  'HarnsaeuremgdL', 'Uric acid',
   'TNF1', 'Tumor necrosis factor-alpha',
   'DS2_corr', 'Digit symbol task',
   'EM_final', 'Episodic memory',

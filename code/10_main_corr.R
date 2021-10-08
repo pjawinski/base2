@@ -3,10 +3,17 @@
 # ==========================================================================
 
 # set working directory
-setwd('/Users/philippe/Desktop/base2')
+setwd('/users/philippe/desktop/projects/base2')
+
+# detach 'other packages' if there are any
+if (!is.null(names(sessionInfo()$otherPkgs))) {
+  invisible(lapply(paste('package:',names(sessionInfo()$otherPkgs),sep=""),detach,character.only=TRUE,unload=TRUE))
+}
 
 # activate R environment
-source("renv/activate.R")
+if (exists('.rs.restartR', mode = 'function')) { .rs.restartR() }
+source('renv/activate.R')
+renv::activate(getwd())
 renv::restore(prompt = FALSE)
 
 # attach packages to current R session
@@ -19,9 +26,8 @@ library(reshape2)
 library(tidyverse)
 library(htmlwidgets)
 
-# set working directory and load data
-setwd('/Users/philippe/Desktop/base2')
-df = read.delim('data/03_brainAGE_w_phenotypes.txt', sep = '\t', header = TRUE)
+# load data
+df = read.delim('code/derivatives/03_brainAGE_w_phenotypes.txt', sep = '\t', header = TRUE)
 
 # rename brain age gap variables for reasons of convenience
 names(df)[names(df) == "brainage_gap_gm_stack"] = "gm"
@@ -52,8 +58,8 @@ dep = as.data.frame(matrix(ncol = 3, byrow = T, data = c(
   'RRdi', 'Diastolic blood pressure', 1,
   'RRsy', 'Systolic blood pressure', 1,
   'finalMetLscore', 'Metabolic load factor', 1,
-  'GammaGTGGTUL', 'Gamma-glutamyltransferase', 1,
-  'HarnsaeuremgdL', 'Urea', 1,
+  'GammaGTGGTUL', 'Gamma-glutamyl-transferase', 1,
+  'HarnsaeuremgdL', 'Uric acid', 1,
   'TNF1', 'Tumor necrosis factor-alpha', 1,
   'DS2_corr', 'Digit symbol task', 0,
   'EM_final', 'Episodic memory', 0,

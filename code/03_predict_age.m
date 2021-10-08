@@ -4,7 +4,7 @@
 % /opt/matlab/bin/matlab -nodesktop -nodisplay 
 
 % set working directory
-cd /slow/projects/base2/
+cd '/slow/projects/base2/'
 
 % add paths
 addpath /slow/projects/base2/code/functions/
@@ -17,20 +17,21 @@ maxNumCompThreads(28);
 % find _cat12.zip files
 files = dir('data/T1w/*/*_cat12.zip');
 
-% get individual identifier from files.name (numeric in UK Biobank)
+% get individual identifier from files.name
 IID = {};
-zeros(length(files),1);
-for i = 1:length(files)
-    IID{i,1} = files(i).name(1:7);
+zeros(numel(files),1);
+for i = 1:numel(files)
+    temp = split(files(i).name, '_');
+    IID{i,1} = temp{2};
 end
 
 % unzip rsmwp[1/2]T1_orig_defaced.nii, read nifti, and create grey and white matter matrix
 files_constant = parallel.pool.Constant(files);
-gm = zeros(length(files), 16128);
-wm = zeros(length(files), 16128);
+gm = zeros(numel(files), 16128);
+wm = zeros(numel(files), 16128);
 
 tic
-parfor i = 1:length(files)
+parfor i = 1:numel(files)
     files_c = files_constant.Value; 
     system(char(strcat({'unzip -joqq '}, files(i).folder, '/', files_c(i).name, {' cat12/mri/rsmwp1*.nii -d '}, files_c(i).folder, '/')));
     rsmwp1 = dir(strcat(files(i).folder, '/rsmwp1*.nii'))
@@ -136,7 +137,7 @@ brainage.data(:,12) = stack_coefficients.gwm(1) + stack_coefficients.gwm(2) * br
 %% add phenotypic data
 
 % import demographics
-demographics = importdata('data/01_phenotypes_master.txt');
+demographics = importdata('code/derivatives/01_phenotypes_master.txt');
 demographics.varnames = demographics.textdata(1,2:size(demographics.textdata,2))';
 demographics.IID = demographics.textdata(2:size(demographics.textdata,1),1);
 demographics = rmfield(demographics,'textdata');
@@ -230,7 +231,7 @@ mean(abs(brainage.data(:,13:24)))']
 % save variables
 gm_logical = RVM_gm.train_logical;
 wm_logical = RVM_wm.train_logical;
-save('data/03_brainage.mat', 'IID', 'brainage', 'qc', 'gm', 'wm', 'files', 'gm_logical', 'wm_logical', 'demographics')
+save('code/derivatives/03_brainage.mat', 'IID', 'brainage', 'qc', 'gm', 'wm', 'files', 'gm_logical', 'wm_logical', 'demographics')
 
 %% make text files with brain age and phenotype variables
 
@@ -240,7 +241,7 @@ colNames = ['sex', 'age', 'age2', qc.ratings_varnames, brainage.varnames];
 brainage_table = array2table([demographics.data(:,1:2), demographics.data(:,2).^2, qc.ratings, brainage.data],'RowNames',rowNames,'VariableNames',colNames);
 
 % write table
-writetable(brainage_table, 'data/03_brainage.txt', 'Delimiter', '\t', 'WriteRowNames', 1)
+writetable(brainage_table, 'code/derivatives/03_brainage.txt', 'Delimiter', '\t', 'WriteRowNames', 1)
 
 % create table with phenotypes
 rowNames = IID;
@@ -248,4 +249,4 @@ colNames = ['sex', 'age', 'age2', demographics.varnames(3:end)', qc.ratings_varn
 brainage_table = array2table([demographics.data(:,1:2), demographics.data(:,2).^2, demographics.data(:,3:end), qc.ratings, brainage.data],'RowNames',rowNames,'VariableNames',colNames);
 
 % write table
-writetable(brainage_table, 'data/03_brainage_w_phenotypes.txt', 'Delimiter', '\t', 'WriteRowNames', 1)
+writetable(brainage_table, 'code/derivatives/03_brainage_w_phenotypes.txt', 'Delimiter', '\t', 'WriteRowNames', 1)

@@ -3,10 +3,17 @@
 # ========================
 
 # set working directory
-setwd('/Users/philippe/Desktop/base2')
+setwd('/users/philippe/desktop/projects/base2')
+
+# detach 'other packages' if there are any
+if (!is.null(names(sessionInfo()$otherPkgs))) {
+  invisible(lapply(paste('package:',names(sessionInfo()$otherPkgs),sep=""),detach,character.only=TRUE,unload=TRUE))
+}
 
 # activate R environment
-source("renv/activate.R")
+if (exists('.rs.restartR', mode = 'function')) { .rs.restartR() }
+source('renv/activate.R')
+renv::activate(getwd())
 renv::restore(prompt = FALSE)
 
 # attach packages to current R session
