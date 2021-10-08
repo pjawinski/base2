@@ -12,8 +12,8 @@ Keywords: aging, brain age, cognition, mental health, Berlin Aging Study II (BAS
 [renv](renv) - contains a single file to initiate the R environment (the scripts located in [code](code) refer to this file)<br>
 [renv.lock](renv.lock) - a list of R packages automatically downloaded and attached to the R environment of this project<br>
 
-## How to download the code
-In order to inspect the code on your local device, you may clone this repository via the the following commands:
+## Downloading the code
+In order to inspect the code on your local device, you may clone this repository via the following commands:
 ```
 git clone https://github.com/pjawinski/base2.git
 cd base2
