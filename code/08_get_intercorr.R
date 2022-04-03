@@ -18,6 +18,7 @@ renv::restore(prompt = FALSE)
 
 # attach packages to current R session
 library(htmlwidgets)
+library(factoextra)
 library(ggplot2)
 library(plotly)
 library(poolr)
@@ -32,7 +33,7 @@ df = read.delim('code/derivatives/03_brainage_w_phenotypes.txt', sep = '\t', hea
 df$gmres = resid(lm(brainage_gap_gm_stack ~ sex + age + age2 + TIV, data = df))
 df$wmres = resid(lm(brainage_gap_wm_stack ~ sex + age + age2 + TIV, data = df))
 df$gwmres = resid(lm(brainage_gap_gwm_stack ~ sex + age + age2 + TIV, data = df))
-
+  
 # define vars of interest
 varint = as.data.frame(matrix(c(
   'gmres', 'Grey matter',
@@ -67,8 +68,8 @@ varint = as.data.frame(matrix(c(
   'cfc_mean', 'Consideration of future consequences'), ncol = 2, byrow = T))
 names(varint) = c('pheno', 'phenoname')
 
-## define function for correlation matrix
-makecorr = function(df, varnames, varlabels, covnames = NULL, type) {
+# define function for correlation matrix
+makecorr = function(df, varnames, varlabels, covnames = NULL, colvars = NULL, type = 'pearson', cluster = F, barwidth = 0.5, barheight = 10) {  
   
   # prepare data.frame
   if (!is.null(covnames)) { covs = df[,covnames] }
@@ -104,6 +105,51 @@ makecorr = function(df, varnames, varlabels, covnames = NULL, type) {
     df.n[i,i] = sum(!is.na(df[,i]))
   }
   
+  # cluster
+  if (cluster == T) { 
+    hc = hclust(as.dist(1-df.rho), method = 'complete')
+    cluster.index = hc$order
+    df = df[,cluster.index]
+    df.rho = df.rho[cluster.index,cluster.index]
+    df.pval = df.pval[cluster.index,cluster.index]
+    df.n = df.n[cluster.index,cluster.index]
+    varnames = varnames[cluster.index]
+    varlabels = varlabels[cluster.index]
+    
+    # hc.dendro = as.dendrogram(hc)
+    # hc.data = dendro_data(hc.dendro, type = "rectangle")
+    # hc.plot = ggplot(segment(hc.data)) + 
+    #   geom_segment(aes(x = x, y = y, xend = xend, yend = yend), lwd = 0.5) + 
+    #   scale_y_reverse(expand = c(0.01, 0.01)) + 
+    #   scale_x_continuous(expand = c(0.025, 0.025)) +
+    #   theme_dendro() +
+    #   theme(plot.margin = unit(c(0, 0, 0, 0), "mm"))
+    
+    oldw = getOption("warn")
+    options(warn = -1)
+    hc.dendro = as.dendrogram(hc)
+    hc.plot = fviz_dend(x = hc.dendro, cex = 0.5, lwd = 0.5, k = 5, ylim = c(NA,0),
+        k_colors = c("#000000","#000000","#1B9E77", "#000000", "#E7298A"), # colors = c("jco"), # k_colors = c("#1B9E77", "#D95F02", "#7570B3", "#E7298A")
+        show_labels = FALSE,
+        rect = TRUE,
+        rect_border = c("#FFFFFF","#FFFFFF","#1B9E77", "#FFFFFF", "#E7298A"), # "jco"
+        rect_fill = TRUE) +
+      scale_y_reverse(expand = c(0.01, 0.01)) + 
+      scale_x_continuous(expand = c(0.01, 0.01)) +
+      theme_dendro() + 
+      theme(title = element_blank(),
+        plot.margin = unit(c(0, 0, 0, 0), "mm"))
+    options(warn = oldw)
+  }
+ 
+  # only keep certain columns
+  if (!is.null(colvars)) { 
+    df.rho = df.rho[!(varnames %in% colvars), varnames %in% colvars]
+    df.pval = df.pval[!(varnames %in% colvars), varnames %in% colvars]
+    df.n = df.n[!(varnames %in% colvars), varnames %in% colvars]
+    df = df[, !(varnames %in% colvars)]
+  }
+  
   # add row.names
   df.rho$id = df.pval$id = df.n$id = names(df)
   df.rho = df.rho[,c(length(df.rho),1:(length(df.rho)-1))]
@@ -118,8 +164,7 @@ makecorr = function(df, varnames, varlabels, covnames = NULL, type) {
   
   # use rho as fill gradient - do not color if corresponding Bonferroni-corrected p value > 0.05
   df.m$pval = as.numeric(reshape2::melt(df.pval, id="id", variable.name="id_y", value.name="pval", na.rm = F)$pval)
-  # df.m$rho_4color[df.m$pval > 0.05/(length(df)*(length(df)-1)/2)] = NA # Bonferroni
-  df.m$rho_4color[df.m$pval > 0.05] = NA # Bonferroni
+  df.m$rho_4color[df.m$pval > 0.05] = NA # df.m$rho_4color[df.m$pval > 0.05/(length(df)*(length(df)-1)/2)] = NA # Bonferroni
   
   # add variables for ggplotly tooltip
   df.m$x = df.m$id
@@ -135,7 +180,7 @@ makecorr = function(df, varnames, varlabels, covnames = NULL, type) {
     
     tempplot = ggplot(df.m, aes(id_y, id, fill=rho_4color, textx = x, texty = y, textn = n, textr = r, textp = p)) + 
       geom_tile() + 
-      geom_text(data = df.m, aes(label = sprintf("%0.2f", round(rho, 2))), size=1.8, hjust = 1, nudge_x = nudgex) +
+      geom_text(data = df.m, aes(label = sprintf("%0.2f", round(rho, 2) + 0)), size=1.8, hjust = 1, nudge_x = nudgex) +
       theme_bw(base_size=10) + 
       theme(legend.position="right",
             panel.grid = element_blank(),
@@ -146,11 +191,12 @@ makecorr = function(df, varnames, varlabels, covnames = NULL, type) {
             axis.ticks.x = element_blank(),
             axis.title.y = element_blank(),
             axis.ticks.y = element_blank(),   
-            plot.margin = unit(c(5, 25, 5, 7), "mm")) +
+            plot.margin = unit(c(0, 20, 0, 7), "mm")) +
       scale_x_discrete(position = "top") +
       scale_y_discrete(limits = rev(levels(df.m$id))) +
       scale_fill_gradientn(colours = c("#9E2013", "white", "#294979"), values = rescale(x = c(-1, 0, 1), to = c(0, 1)),  na.value="white", guide = "colourbar", breaks = c(-1, -0.5, 0, 0.5, 1), limits = c(-1,1)) +
-      guides(fill = guide_colourbar(title = 'rho', direction = 'vertical', title.position = 'top', title.theme = element_text(size = 7, hjust = 0), label.theme = element_text(size = 6, hjust = 0.5), barwidth = 0.5, barheight = 10, ticks = F, limits = c(-1,1)))
+      guides(fill = guide_colourbar(title = 'rho', direction = 'vertical', title.position = 'top', title.theme = element_text(size = 7, hjust = 0), label.theme = element_text(size = 6, hjust = 0.5), barwidth = barwidth, barheight = barheight, ticks = F, limits = c(-1,1)))
+    
     
     if (type == 'plotly') { 
       tempplot = ggplotly(tempplot, tooltip = c("textx", "texty", "textn", "textr", "textp", "textn"), dynamicTicks = FALSE, width = 1100, height = 700)
@@ -159,11 +205,22 @@ makecorr = function(df, varnames, varlabels, covnames = NULL, type) {
     }
     
     assign(paste0('df.', type), tempplot)
+    
+    if (type == 'ggplot' & cluster == T) { 
+      tempplot = tempplot / hc.plot +
+      plot_layout(heights = c(7, 1))
+      assign(paste0('df.dendro'), tempplot)
+    }
+  
   }
   
   # return results (rho + pval + n + plot)
+  if (cluster == T) {
+  results = list("rho" = df.rho, "pval" = df.pval, "n" = df.n, "ggplot" = df.ggplot, "plotly" = df.plotly, "dendro" = df.dendro)
+  } else {
   results = list("rho" = df.rho, "pval" = df.pval, "n" = df.n, "ggplot" = df.ggplot, "plotly" = df.plotly)
-  results
+  }
+  
 }
 
 # hijack function solve.default and set tolerance = 0 (multicollinearity between covariates age and age2 results in singularity error)
@@ -172,17 +229,22 @@ trace("solve.default", tracer = quote(tol <- 1E-20), print = FALSE) # alternativ
 # calculate correlations
 results = makecorr(df = df, varnames = varint$pheno[4:nrow(varint)], varlabels = varint$phenoname[4:nrow(varint)], type = 'pearson')
 results_partial = makecorr(df = df, varnames = varint$pheno[4:nrow(varint)], varlabels = varint$phenoname[4:nrow(varint)], covnames = c('sex','age','age2', 'TIV'), type = 'pearson')
+results_clustered = makecorr(df = df, varnames = varint$pheno[4:nrow(varint)], varlabels = varint$phenoname[4:nrow(varint)], covnames = c('sex','age','age2', 'TIV'), type = 'pearson', cluster = T)
 
-# draw ggplots as png
-png(width = 10.25, height = 5.97, units = "in", res = 300, filename = 'code/figures/intercorr_outcome.png')
+# draw ggplot as png
+png(width = 10.25, height = 5.57, units = "in", res = 300, filename = 'code/figures/intercorr_outcome.png')
 results$ggplot
 dev.off()
 
-png(width = 10.25, height = 5.97, units = "in", res = 300, filename = 'code/figures/intercorr_outcome_partial.png')
+png(width = 10.25, height = 5.57, units = "in", res = 300, filename = 'code/figures/intercorr_outcome_partial.png')
 results_partial$ggplot
 dev.off()
 
-# draw ggplots as pdf
+png(width = 10.25, height = 6.36, units = "in", res = 300, filename = 'code/figures/intercorr_outcome_partial_clustered.png')
+results_clustered$dendro
+dev.off()
+
+# draw ggplot as pdf
 pdf(width = 10.25, height = 5.97, file = 'code/figures/intercorr_outcome.pdf')
 results$ggplot
 dev.off()
@@ -192,13 +254,13 @@ results_partial$ggplot
 dev.off()
 
 # draw plotly as html
-saveWidget(results$plotly, 'code/figures/intercorr_outcome.html', selfcontained = TRUE)
+saveWidget(results$plotly, 'code/figures/intercorr_outcome.html', selfcontained = TRUE, title = "Correlations between criterion variables")
 system('rm -rf code/figures/intercorr_outcome_files')
 
-saveWidget(results_partial$plotly, 'code/figures/intercorr_outcome_partial.html', selfcontained = TRUE)
+saveWidget(results_partial$plotly, 'code/figures/intercorr_outcome_partial.html', selfcontained = TRUE, title = "Partial correlations between criterion variables")
 system('rm -rf code/figures/intercorr_outcome_partial_files')
 
-# calculate effective number of tests - outcome variables
+# calculate effective number of tests - criterion variables
 results_partial = makecorr(df = df, varnames = varint$pheno[4:nrow(varint)], varlabels = varint$phenoname[4:nrow(varint)], covnames = c('sex','age','age2', 'TIV'), type = 'pearson')
 meff(results_partial$rho[,2:ncol(results$rho)], method = "liji")
 

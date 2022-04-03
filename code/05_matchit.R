@@ -7,7 +7,7 @@
 # --------------------
 
 # set working directory
-setwd('/users/philippe/desktop/base2')
+setwd('/users/philippe/desktop/projects/base2')
 
 # detach 'other packages' if there are any
 if (!is.null(names(sessionInfo()$otherPkgs))) {

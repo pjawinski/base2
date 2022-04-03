@@ -38,6 +38,23 @@ names(df)[names(df) == "brainage_gap_gwm_stack"] = "gwm"
 indep = c("gm","wm","gwm")
 covs = c("sex", "age", "age2", "TIV")
 
+# test effects of covariates on brain age gap
+hierarchical = data.frame(matrix(NA, nrow = 4, ncol = 15))
+names(hierarchical) = as.vector(sapply(indep, function(x) paste0(x, c('.R2','.dfn','.dfd','.F','.p'))))
+for (i in indep) {
+  model1 = lm(paste0(i, ' ~ sex'), data = df)
+  model2 = lm(paste0(i, ' ~ sex + age'), data = df)
+  model3 = lm(paste0(i, ' ~ sex + age + TIV'), data = df)
+  model4 = lm(paste0(i, ' ~ sex + age + age2 + TIV'), data = df)
+  anv = anova(model1,model2,model3,model4)
+  hierarchical[,paste0(i,'.R2')] = c(summary(model1)$r.squared,summary(model2)$r.squared,summary(model3)$r.squared,summary(model4)$r.squared)
+  hierarchical[,paste0(i,'.dfn')] = c(summary(model1)$fstatistic[[3]],anv$Res.Df[2:4])
+  hierarchical[,paste0(i,'.dfd')] = c(summary(model1)$fstatistic[[2]],anv$Df[2:4])
+  hierarchical[,paste0(i,'.F')] = c(summary(model1)$fstatistic[[1]],anv$F[2:4])
+  hierarchical[,paste0(i,'.p')] = c(summary(model1)$coefficients[2,4],anv$`Pr(>F)`[2:4])
+}
+write.table(hierarchical, 'code/tables/hierarchical_covs.txt', quote = FALSE, sep = '\t', row.names = FALSE)
+
 # set dependent variables and expected effect directions
 dep = as.data.frame(matrix(ncol = 3, byrow = T, data = c(
   'Educ_final', 'Years of education', 0,
@@ -267,5 +284,5 @@ names(corrplotly$x$data[[7]]$colorscale) = NULL
     
 # draw corrplotly as html
 corrplotly
-saveWidget(corrplotly, paste0('code/figures/main_corr.html'), selfcontained = TRUE)
+saveWidget(corrplotly, paste0('code/figures/main_corr.html'), selfcontained = TRUE, title = "Partial Pearson correlations between brain age gap and 27 criterion variables")
 system(paste0('rm -rf code/figures/main_corr_files'))

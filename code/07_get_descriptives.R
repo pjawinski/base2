@@ -58,7 +58,7 @@ varint = as.data.frame(matrix(c(
   'GammaGTGGTUL', 'Gamma-glutamyl-transferase',
   'HarnsaeuremgdL', 'Uric acid',
   'TNF1', 'Tumor necrosis factor-alpha',
-  'DS2_corr', 'Digit symbol task',
+  'DS2_corr', 'Digit symbol substitution test',
   'EM_final', 'Episodic memory',
   'WM_final', 'Working memory',
   'Gf_final', 'Fluid intelligence',
