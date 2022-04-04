@@ -78,7 +78,7 @@ dep = as.data.frame(matrix(ncol = 3, byrow = T, data = c(
   'GammaGTGGTUL', 'Gamma-glutamyl-transferase', 1,
   'HarnsaeuremgdL', 'Uric acid', 1,
   'TNF1', 'Tumor necrosis factor-alpha', 1,
-  'DS2_corr', 'Digit symbol task', 0,
+  'DS2_corr', 'Digit symbol substitution test', 0,
   'EM_final', 'Episodic memory', 0,
   'WM_final', 'Working memory', 0,
   'Gf_final', 'Fluid intelligence', 0,
