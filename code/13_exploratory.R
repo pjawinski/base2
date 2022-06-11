@@ -302,32 +302,6 @@ tvalComparison = ggplot(dfplot, aes(x = w.age2, y = wout.age2, color=tissue)) +
         legend.text = element_text(size = 10),
         plot.margin = unit(c(5, 5, 5, 5), "mm"))
 
-tvalComparison = ggplot(dfplot, aes(x = w.age2, y = wout.age2, color=tissue)) +
-  geom_point(shape=19, alpha = 0.8, size = 0.8) +
-  xlab("t-value\n(covariates: sex, age, age2, TIV)") +
-  ylab("t-value\n(covariates: sex, age, and TIV)") +
-  scale_x_continuous(expand = c(0,0), limits = c(-4,3.5), breaks = seq(-4,3,2)) + # label = axis.set$CHR % label = c(1:22, 'X', 'Y MT', '') label = c(1:18,'', 20, '', 22, 'X', 'Y MT', '')
-  scale_y_continuous(expand = c(0,0), limits = c(-4,3.5), breaks = seq(-4,3,2)) +
-  scale_color_manual(values=c("#f8766d", "#00ba38", "#619cff")) +
-  geom_segment(aes(x=-4,xend=-4,y=-3,yend=3), colour = "black", size = 0.25) +
-  geom_segment(aes(y=-4,yend=-4,x=-3,xend=3), colour = "black", size = 0.25) +
-  theme_bw() +
-  theme( 
-    legend.position = "none",
-    panel.border = element_blank(),
-    axis.line = element_blank(),
-    axis.ticks = element_line(colour = "black", size = 0.25),
-    axis.ticks.length=unit(.15, "cm"),
-    panel.grid.major.x = element_blank(),
-    panel.grid.minor.x = element_blank(),
-    panel.grid.major.y = element_blank(),
-    panel.grid.minor.y = element_blank(),
-    axis.text.x = element_text(size = 10, vjust = 0.5, hjust = 0, margin = margin(t = 5, r = 0, b = 0, l = 0)),
-    axis.text.y = element_text(size = 10, vjust = 0.5, margin = margin(t = 0, r = 3, b = 0, l = 0)),
-    axis.title.y = element_text(size = 14, margin = margin(t = 0, r = 5, b = 0, l = 5)),
-    axis.title.x = element_text(size = 14, margin = margin(t = 10, r = 0, b = 0, l = 0)),
-    plot.margin=unit(c(0.25,1,-0.5,0),"cm"))
-
 # save plot
 png('code/figures/tvalComparison_age2.png', width=5.6, height=3.7, units = "in", res = 300)
 tvalComparison
@@ -431,7 +405,97 @@ output$hypothesis = factor(output$hypothesis, levels = c(0,1), labels = c('-','+
 # save results
 write.table(output, 'code/tables/expl_income_education.txt', quote = FALSE, sep = '\t', row.names = FALSE)
 
+# ==========================================================================
+# === compare observed correlation coefficients with literature findings ===
+# ==========================================================================
 
+# load data
+results = read.delim('code/tables/main_corr.txt', sep = '\t', header = TRUE)
+
+# convert hypothesis-variable to numeric
+results$hypothesis = as.numeric(as.factor(results$hypothesis))
+results$hypothesis[results$hypothesis==1] = -1
+results$hypothesis[results$hypothesis==2] = 1
+
+# define previous effect sizes
+prev = as.data.frame(matrix(ncol = 3, byrow = T, data = c(
+  'Educ_final', 'Years of education', -0.16,
+  'hnetto', 'Household income', -0.03,
+  'MMSE_Summe', 'Mini-mental state examination', tanh(median(atanh(c(-0.16,-0.18,-0.46,-0.09,-0.20)))),
+  'GDS_Summe', 'Geriatric depression scale', 0.023,
+  'CESD_Summe', 'CES-Depression', 0.31,
+  'Rauchen_aktuell_inverted', 'Smoking status', tanh(median(atanh(c(0.08,0.084)))),
+  'Alkohol_haufigkeit', 'Frequency of alcohol intake', tanh(median(atanh(c(0.06,0.04,0.095)))),
+  'Alkohol_Menge', 'Amount of alcohol intake', tanh(median(atanh(c(0.06,0.24)))),
+  'Alkohol_6Glaser', 'Frequency of 6 glasses of alcohol intake', tanh(median(atanh(c(0.06,0.24)))),
+  'CH_Diabetes', 'Diabetes diagnosis', tanh(median(atanh(c(0.06,0.29,0.085)))),
+  'BZP1', 'Fasting glucose', 0.34,
+  'BMI', 'Body mass index', tanh(median(atanh(c(0.28,-0.07)))),
+  'RRdi', 'Diastolic blood pressure', tanh(median(atanh(c(0.09,0.17,0.086,-0.07)))),
+  'GammaGTGGTUL', 'Gamma-glutamyl-transferase', 0.23,
+  'HarnsaeuremgdL', 'Uric acid', 0.17,
+  'TNF1', 'Tumor necrosis factor-alpha', 0.29,
+  'DS2_corr', 'Digit symbol substitution test', -0.06,
+  'Gf_final', 'Fluid intelligence', tanh(median(atanh(c(-0.05,-0.07,-0.052,-0.338,-0.18)))))))
+names(prev) = c('pheno', 'phenoname', 'corr')
+
+# calculate confidence intervals
+df$gm.lower = atanh(df$gm_estimate)-(1/sqrt(df$n-3))
+df$gm.upper = atanh(df$gm_estimate)+(1/sqrt(df$n-3))
+df$wm.lower = atanh(df$wm_estimate)-(1/sqrt(df$n-3))
+df$wm.upper = atanh(df$wm_estimate)+(1/sqrt(df$n-3))
+df$gwm.lower = atanh(df$gwm_estimate)-(1/sqrt(df$n-3))
+df$gwm.upper = atanh(df$gwm_estimate)+(1/sqrt(df$n-3))
+
+gm = ggplot(df, aes(x = as.numeric(corr), y = gm_estimate, color=phenoname)) +
+  geom_point(shape=19, alpha = 0.8, size = 0.8) +
+  geom_pointrange(aes(ymin = gm.lower, ymax = gm.upper)) +
+  geom_pointrange(aes(xmin = as.numeric(corr)-0.05, xmax = as.numeric(corr)+0.05)) +
+  xlab("t-value\n(covariates: sex, age, age2, TIV)") +
+  ylab("t-value\n(covariates: sex, age, and TIV)") +
+  #scale_color_manual(values=c("#f8766d", "#00ba38", "#619cff")) +
+  theme_bw(base_size=10) +
+  theme(axis.text.x = element_text(size = 10),
+        axis.text.y = element_text(size = 10),
+        legend.position = "none",
+        legend.title = element_blank(),
+        legend.text = element_text(size = 10),
+        plot.margin = unit(c(5, 5, 5, 5), "mm"))
+
+wm = ggplot(df, aes(x = as.numeric(corr), y = wm_estimate, ymin = wm.lower,ymax = wm.upper)) +
+  geom_point(shape=19, alpha = 0.8, size = 0.8) +
+  geom_pointrange() +
+  xlab("t-value\n(covariates: sex, age, age2, TIV)") +
+  ylab("t-value\n(covariates: sex, age, and TIV)") +
+  #scale_color_manual(values=c("#f8766d", "#00ba38", "#619cff")) +
+  theme_bw(base_size=10) +
+  theme(axis.text.x = element_text(size = 10),
+        axis.text.y = element_text(size = 10),
+        legend.position = "none",
+        legend.title = element_blank(),
+        legend.text = element_text(size = 10),
+        plot.margin = unit(c(5, 5, 5, 5), "mm"))
+
+gwm = ggplot(df, aes(x = as.numeric(corr), y = gwm_estimate, ymin = gwm.lower,ymax = gwm.upper)) +
+  geom_point(shape=19, alpha = 0.8, size = 0.8) +
+  geom_pointrange() +
+  xlab("t-value\n(covariates: sex, age, age2, TIV)") +
+  ylab("t-value\n(covariates: sex, age, and TIV)") +
+  #scale_color_manual(values=c("#f8766d", "#00ba38", "#619cff")) +
+  theme_bw(base_size=10) +
+  theme(axis.text.x = element_text(size = 10),
+        axis.text.y = element_text(size = 10),
+        legend.position = "none",
+        legend.title = element_blank(),
+        legend.text = element_text(size = 10),
+        plot.margin = unit(c(5, 5, 5, 5), "mm"))
+
+gm + wm + gwm
+
+
+# merge with results
+df = inner_join(prev, results, by = )
+plot(df$corr, df$gwm_estimate)
 
 
 

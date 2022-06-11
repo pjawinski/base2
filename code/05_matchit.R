@@ -61,6 +61,12 @@ names(ukb) = c('IID', 'sex', 'age', 'TIV', 'gm', 'wm', 'gwm', 'group')
 df = rbind(base2, ukb)
 df = df[, c('IID', 'group', 'sex', 'age', 'TIV', 'gm', 'wm', 'gwm')]
 
+# calculate correlation coefficient r, r squared, and R2
+calc.R2 = function(obs, pred){1-(sum((obs - pred)^2)/sum((obs - mean(obs))^2))}
+c(cor(ukb$gm, ukb$age), cor(ukb$wm, ukb$age), cor(ukb$gwm, ukb$age))
+c(cor(ukb$gm, ukb$age)^2, cor(ukb$wm, ukb$age)^2, cor(ukb$gwm, ukb$age)^2)
+c(calc.R2(ukb$age,ukb$gm), calc.R2(ukb$age,ukb$wm), calc.R2(ukb$age,ukb$gwm))
+
 # ---------------
 # --- MatchIt ---
 # ---------------

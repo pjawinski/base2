@@ -112,7 +112,7 @@ subplot(1,3,i); hold on;
         prim_refline = refline(mdl.Coefficients{2,1}, mdl.Coefficients{1,1});
         prim_refline.Color = [180/255, 180/255, 180/255];
         
-    plot(secondary.age, secondary.brainage.data(:,i*4-4+j), '.','Color',[0, 0.4470, 0.7410],'Markersize',3,'LineWidth',0.25);
+    plot(secondary.age, secondary.brainage.data(:,i*4-4+j), '.','Color',[0, 0.4470, 0.7410],'Markersize',2,'LineWidth',0.25);
         xlim([min(secondary.age) max(secondary.age)]); ylim([min(secondary.age) max(secondary.age)]); 
         mdl = fitlm(secondary.age,secondary.brainage.data(:,i*4-4+j));
         sec_refline = refline(mdl.Coefficients{2,1}, mdl.Coefficients{1,1});
@@ -163,4 +163,4 @@ set(brainage_figure(1),'PaperUnits', 'centimeters');
 set(brainage_figure(1),'PaperSize',[20 6.5]);
 set(brainage_figure(1),'PaperPosition', [0 0 20 6.5]);
 print('code/figures/accuracy.pdf','-dpdf')
-print('code/figures/accuracy.png','-dpng', '-r300')
+print('code/figures/accuracy2.png','-dpng', '-r300')
